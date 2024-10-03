@@ -40,6 +40,7 @@ class GraphInitializer(nn.Module):
 
 class LaplacianInitializer():
     def __init__(self):
+        self.device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         ls=[]
         for i in range(1,10):
 
@@ -61,7 +62,7 @@ class LaplacianInitializer():
         structural_features = torch.tensor(eigenvectors, dtype=torch.float32)
         structural_features=F.pad(structural_features,(0,9-num_nodes),value=0)
 
-        return structural_features
+        return structural_features.to(self.device)
     
     def init_features(self,global_vec,num_node):
         index=num_node-1
@@ -96,34 +97,27 @@ def fully_connected(feature_vec,num_nodes,batch):
 
 class Decoder(nn.Module):
     def __init__(self,latent_dim):
+        self.device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         super(Decoder,self).__init__()
         
-        self.num_net=NodeNumPrediction(latent_dim)
+        self.num_net=NodeNumPrediction(latent_dim).to(self.device)
         self.lap_init=LaplacianInitializer()
 
-        """
-        self.layers=nn.Sequential(
-            nn.Linear(global_dim+9,128),
-            nn.ReLU(),
-            nn.Linear(128,64),
-            nn.ReLU(),
-            nn.Linear(64,16)
-        )
-        """
-        self.layers=nn.Linear(latent_dim,16) #Check how strong this layer needs to be
-        self.layers2=nn.Linear(16+9,16)
+
+        self.layers=nn.Linear(latent_dim,16).to(self.device) #Check how strong this layer needs to be
+        self.layers2=nn.Linear(16+9,16).to(self.device)
         self.feature_layer=nn.Sequential(
             nn.Linear(16,32),
             nn.ReLU(),
             nn.Linear(32,4)
-        )
+        ).to(self.device)
         self.edge_layer=nn.Sequential(
             nn.Linear(16,32),
             nn.ReLU(),
             nn.Linear(32,5)
-        )
+        ).to(self.device)
 
-        self.gnn=GIN(in_channels=16,hidden_channels=16,num_layers=4,out_channels=16,dropout=0.,act="leakyrelu",norm="graph")
+        self.gnn=GIN(in_channels=16,hidden_channels=16,num_layers=4,out_channels=16,dropout=0.,act="leakyrelu",norm="graph").to(self.device)
         
 
     def forward(self,global_vec,data=None):
