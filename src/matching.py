@@ -1,4 +1,4 @@
-    import torch
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import ot
@@ -32,7 +32,7 @@ class NaiveMatcher():
     def __init__(self):
         # Precompute permutation matrices for sizes 1 to 9
         self.permutations_matrices = [generate_permutation_matrices(i) for i in range(1, 10)]
-
+        self.device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     def diffusion_matching(self, in_data, rec_data,test):
         #temp=to_torch_coo_tensor(in_data.edge_index,in_data.edge_attr).values()
@@ -43,28 +43,26 @@ class NaiveMatcher():
         batch=[]
         unmatched_batch=[]
 
-        zeros = torch.zeros((B, n, n, 1))
-        
-
         for i in range(B):
             num_nodes = torch.sum(mask[i]).item()    
             in_x_temp=in_x[i][mask[i]]
             in_adj_temp=in_adj[i][mask[i]][:,mask[i]]
             rec_x_temp = rec_x[i][mask[i]]
             rec_adj_temp = rec_adj[i][mask[i]][:, mask[i]]
-            zeros = torch.ones(( num_nodes, num_nodes, 1))
+            zeros = torch.ones(( num_nodes, num_nodes, 1)).to(self.device)
             temp=in_adj_temp.sum(dim=2).unsqueeze(-1)
             zeros = zeros-temp
             in_adj_temp=torch.cat((zeros,in_adj_temp),dim=2)
-            indices = torch.arange(num_nodes)
+            indices = torch.arange(num_nodes).to(self.device)
             in_adj_temp[indices, indices] = 0
 
-            triu_mask=torch.triu(torch.ones((num_nodes,num_nodes),dtype=bool),1)
+            triu_mask=torch.triu(torch.ones((num_nodes,num_nodes),dtype=bool),1).to(self.device)
 
             f_loss=(rec_x_temp-in_x_temp)**2
             adj_loss=(rec_adj_temp[triu_mask]-in_adj_temp[triu_mask])**2
             temp_loss=torch.cat((f_loss.sum(dim=-1),adj_loss.sum(dim=-1)),dim=0)
-            unmatched_batch.append(temp_loss.mean().unsqueeze(0))
+            temp_loss=temp_loss.mean().unsqueeze(0)
+            unmatched_batch.append(temp_loss)
             
             if num_nodes == 1:
                 batch.append(temp_loss)
@@ -79,7 +77,7 @@ class NaiveMatcher():
             sample_perc=0.1
             if perm_matrices.size(0)>6:
                 num_elements = int(sample_perc * perm_matrices.size(0))
-                indices = torch.randperm(perm_matrices.size(0))[:num_elements]
+                indices = torch.randperm(perm_matrices.size(0),device=self.device)[:num_elements]
                 perm_matrices=perm_matrices[indices]
 
             
@@ -93,13 +91,16 @@ class NaiveMatcher():
             with torch.no_grad():
                 f_loss=(reordered_x-in_x_temp)**2
                 adj_loss=(reordered_adj-in_adj_temp)**2
-                temp_loss=torch.cat((f_loss.sum(dim=2).mean(1),adj_loss.sum(dim=2).mean(1)),dim=0)
-                temp_loss=temp_loss.mean()
+                f_loss=f_loss.sum(dim=2)
+                adj_loss=adj_loss.sum(dim=2)
+                temp_loss=torch.cat((f_loss,adj_loss),dim=1)
+                temp_loss=temp_loss.mean(1)
                 _,min_idx = torch.min(temp_loss,dim=0)
 
             f_loss=(reordered_x[min_idx]-in_x_temp)**2
             adj_loss=(reordered_adj[min_idx]-in_adj_temp)**2
             temp_loss=torch.cat((f_loss.sum(1),adj_loss.sum(1)),dim=0)
+
             batch.append(temp_loss.mean().unsqueeze(0))    
 
         batch=torch.cat(batch)

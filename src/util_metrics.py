@@ -6,8 +6,10 @@ import torch
 from torch_geometric.data import Data
 import utils
 
+DEVICE=torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def _transform_graph(data):
-    atom_ls=torch.tensor([6,7,8,9]) 
+    
+    atom_ls=torch.tensor([6,7,8,9],device=DEVICE) 
     atom_x=torch.argmax(data.x,dim=1)
     atom_x=atom_ls[atom_x]
     return Data(atom_x,data.edge_index,edge_attr=torch.argmax(data.edge_attr,dim=1),batch=data.batch)

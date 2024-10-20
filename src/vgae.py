@@ -5,7 +5,7 @@ from torch import Tensor
 from torch.nn import Module
 from torch_geometric.nn import Set2Set
 from torch_geometric.nn.inits import reset
-from torch_geometric.utils import negative_sampling
+from torch_geometric.utils import negative_sampling, subgraph
 import torch.nn.functional as F
 from torch_geometric.data import Data
 import utils
@@ -131,12 +131,15 @@ class VGAE(GAE):
         super().__init__(encoder, decoder)
         self.embedding=embedding
         self.latent_dims=latent_dims
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.encoder.to(self.device)
+        self.decoder.to(self.device)
         #self.aux_gnn=auxiliary_gnn
         #self.s_loss=ot_lib.Sinkhorn_Loss(self.aux_gnn,sinkhorn_entropy=sinkhorn_entropy,sinkhorn_max_it=sinkhorn_max_it,dist="uniform",gumbel=gumbel,gnn_train=gnn_train)
         if embedding=='graph':
-            self.linear_mu = torch.nn.Linear(2*self.encoder.out_channels, latent_dims)
-            self.linear_sigma = torch.nn.Linear(2*self.encoder.out_channels, latent_dims)
-            self.aggregation=Set2Set(self.encoder.out_channels,processing_steps=6)
+            self.linear_mu = torch.nn.Linear(2*self.encoder.out_channels, latent_dims).to(self.device)
+            self.linear_sigma = torch.nn.Linear(2*self.encoder.out_channels, latent_dims).to(self.device)
+            self.aggregation=Set2Set(self.encoder.out_channels,processing_steps=6).to(self.device)
         elif embedding=='node':
             self.linear_mu=torch.nn.Linear(self.encoder.out_channels,latent_dims)
             self.linear_sigma=torch.nn.Linear(self.encoder.out_channels,latent_dims)
@@ -169,16 +172,17 @@ class VGAE(GAE):
     @staticmethod
     def kl_loss(mu ,logvar):
         #KL-Divergence is averaged for the whole batch
-        kl_loss=torch.exp(logvar) - logvar + torch.pow(mu,2) - 1
+        logvar_temp=torch.exp(logvar)
+        kl_loss=logvar_temp - logvar + torch.pow(mu,2) - 1
         kl_loss = 0.5 * torch.sum(kl_loss,dim=1)
-        kl_loss=torch.sum(kl_loss)
+        kl_loss=torch.mean(kl_loss)
         return kl_loss
 
         
     
     def reparametrize(self, mu: Tensor, logvar: Tensor) -> Tensor:
         if self.training:
-            return mu + torch.randn_like(logvar) * torch.exp(0.5*logvar)     
+            return mu + torch.randn_like(logvar,device=self.device) * torch.exp(0.5*logvar)     
         else:
             return mu
 
@@ -200,15 +204,22 @@ class VGAE(GAE):
     def sample(self,num_samples:int):
         data_ls=[]  
         for _ in range(num_samples):
-            noise=torch.randn((1,self.latent_dims))
-            data=self.decoder(noise)
+            noise=torch.randn((1,self.latent_dims),device=self.device)
             try:
-                data=Data(F.one_hot(torch.argmax(data.x,dim=1),num_classes=4).to(torch.float),data.edge_index,
-                        edge_attr=F.one_hot(torch.argmax(data.edge_attr,dim=1),num_classes=4),batch=data.batch)
+                data,_=self.decoder(noise)
+                data=self.remove_edges(data)
                 data_ls.append(data)
             except:
                 data_ls.append(None)
         return data_ls
+    
+    def remove_edges(self,data):
+        mask=torch.argmax(data.edge_attr,dim=1)
+        mask=mask!=0
+        data.edge_attr=data.edge_attr[mask][:,1:]
+        data.edge_index=data.edge_index[:,mask]
+        return Data(F.one_hot(torch.argmax(data.x,dim=1),num_classes=4).to(torch.float),data.edge_index,
+                        edge_attr=F.one_hot(torch.argmax(data.edge_attr,dim=1),num_classes=4),batch=data.batch)
 
 
     def forward(self,*args, **kwargs):

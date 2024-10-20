@@ -9,6 +9,7 @@ from torch.nn import Linear, ModuleList
 from tqdm import tqdm
 from torch_geometric.nn.models import MLP
 from torch_geometric.data import Data
+from torch_geometric.utils import add_self_loops 
 from torch_geometric.loader import  NeighborLoader
 from torch_geometric.nn.conv import (
     GATConv,
@@ -205,6 +206,7 @@ class BasicGNN(torch.nn.Module):
                 (default: :obj:`None`)
         """
         x=data.x
+        
         edge_index=data.edge_index
         if data.edge_attr is None:
             edge_attr=data.edge_weight
@@ -214,7 +216,7 @@ class BasicGNN(torch.nn.Module):
             edge_weight=data.edge_attr
         if data.batch is not None:
             batch=data.batch
-
+        edge_index,edge_attr=add_self_loops(edge_index,edge_attr)
             
             
         xs: List[Tensor] = []
@@ -239,7 +241,7 @@ class BasicGNN(torch.nn.Module):
             if i < self.num_layers - 1 or self.jk_mode is not None:
                 if self.act is not None and self.act_first:
                     x = self.act(x)
-                if self.norm in ["instancenorm","pairnorm","layernorm","pairnorm"]:
+                if self.norm in ["instance","pairnorm","layer","graph"]:
                     x = norm(x, batch)
                 else:
                     x = norm(x)
