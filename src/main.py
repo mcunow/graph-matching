@@ -224,7 +224,9 @@ def main(args):
         if epoch % 20 == 0:
             if epoch%50==0:
                 # Save model checkpoint
-                path = f"../models/vgae_model_{run_name}_{epoch}.pth"
+                folder = "../models"
+                path = f"{folder}/vgae_model_{run_name}_{epoch}.pth"
+                os.makedirs(folder, exist_ok=True)
                 torch.save(vgae_model.state_dict(), path)
             
             # Generate and log samples
