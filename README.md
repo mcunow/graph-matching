@@ -13,8 +13,8 @@ conda activate Graph-Matching
 ```
 Make run.sh executable. This file allows a single run. The permutation-invariant loss that is used needs to be specified. Available options are optimal, Top 10, Top 50, Top 100 matching. The optimal matching takes the best correspondence, while Top 10 randomly samples a correspondence of the best ten correspondences, etc. Further, there are a graph statistics loss and a GNN loss where the reconstruction loss is induced by an embedding space.
 ```console
-chmod +x ../scripts/run.sh
-../scripts/run.sh loss_type
+chmod +x scripts/run.sh
+./run.sh loss_type
 ```
 Available loss_type options:
 - Optimal
