@@ -12,7 +12,9 @@ dependencies:
   - wandb=0.19.6
   - rdkit
   - torchvision
+  - tqdm= 4.66.5
   - pip
   - pip:
+      - torch-geometric
       - torch-scatter
       - torch-sparse
