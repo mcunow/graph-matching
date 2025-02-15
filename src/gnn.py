@@ -19,7 +19,8 @@ from torch_geometric.nn.conv import (
     GINConv,
     GCNConv,
     MessagePassing,
-    RGCNConv
+    RGCNConv,
+    GPSConv
 
 )
 
@@ -484,3 +485,50 @@ class RGCN(BasicGNN):
 
         return RGCNConv(in_channels,out_channels,num_relations=edge_dim,aggr="mean")
 
+class GPS(BasicGNN):
+    supports_edge_weight= False
+    supports_edge_attr= False
+    def init_conv(self, in_channels: int, out_channels: int,edge_dim,
+        **kwargs) -> MessagePassing:
+        mlp = MLP(
+            [in_channels, out_channels, out_channels],
+            plain_last=False,
+            act=self.act,   
+            norm=self.norm
+        )
+        gin=GINConv(mlp,eps=0.1,train_eps=True)
+        if in_channels%4!=0:
+            heads=2
+        else:
+            heads=4
+        return GPSConv(in_channels,conv=gin,heads=heads)
+    
+
+class PartialGNN(nn.Module):
+    def __init__(self, original_model,num_layers,norm=True):
+        super(PartialGNN, self).__init__()
+        conv_ls=[]
+        norm_ls=[]
+        for i in range(num_layers):
+            conv_ls.append(original_model.convs[i])
+            if not norm:
+                norm_ls.append(nn.Identity())
+            else:
+                norm_ls.append(original_model.norms[i])
+        self.convs=nn.ModuleList(conv_ls)
+        self.norms=nn.ModuleList(norm_ls)
+
+        #self.convs = nn.ModuleList([original_model.convs[0], original_model.convs[1]])
+        #self.norms = nn.ModuleList([original_model.norms[0], original_model.norms[1]])
+        self.dropout = original_model.dropout
+        self.act = original_model.act
+
+    def forward(self, data):
+        x=data.x
+        edge_index=data.edge_index
+        for conv, norm in zip(self.convs, self.norms):
+            x = conv(x, edge_index)
+            x = norm(x)
+            x = self.act(x)
+            #x = self.dropout(x)
+        return x

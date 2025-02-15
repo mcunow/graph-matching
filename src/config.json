@@ -1,0 +1,12 @@
+{
+    "epochs": 1000,
+    "batch_size": 1,
+    "encoder_norm": "layer",
+    "decoder_norm": "layer",
+    "lr": 1e-5,
+    "dropout": 0.01,
+    "sample_size": 10000,
+    "latent_dim": 50,
+    "alpha": 0.1,
+    "beta": 0.001
+}

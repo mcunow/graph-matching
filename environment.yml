@@ -1,0 +1,19 @@
+channels:
+  - pytorch
+  - conda-forge
+  - nvidia
+  - defaults
+  - pyg
+
+dependencies:
+  - python=3.10
+  - pytorch=2.3.0+cu121  
+  - cudatoolkit=12.1  
+  - pytorch-cuda=12.4  
+  - wandb=0.19.6
+  - rdkit
+  - torchvision=0.18.0a0
+  - torch-scatter
+  - torch-sparse
+  - pip:
+      - pyg-lib  

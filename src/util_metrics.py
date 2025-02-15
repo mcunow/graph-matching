@@ -40,21 +40,27 @@ def data_to_molecule(in_data):
     return mol
 def is_valid_molecule(data):
     try:
-        mol=data_to_molecule(data)
+        mol = data_to_molecule(data)
     except Exception:
         print("Zero-node graph")
         return None
+
+    try:
+        # Perform sanitization first
+        #Chem.SetAromaticity(mol, Chem.AromaticityModel.AROMATICITY_RDKIT)
+        Chem.SanitizeMol(mol)
+        Chem.Kekulize(mol)
+        
+        # Generate SMILES
+        smiles = Chem.MolToSmiles(mol, kekuleSmiles=False, allHsExplicit=False, canonical=True)
+        mol = Chem.MolFromSmiles(smiles)
+        smiles = Chem.CanonSmiles(smiles)
+        return smiles
     except Chem.KekulizeException:
         print("kekulization error")
         return None
-    try:     
-        Chem.Kekulize(mol)
-        Chem.SanitizeMol(mol)
-        smiles=Chem.MolToSmiles(mol,kekuleSmiles=False,allHsExplicit=False,canonical=True)
-        mol = Chem.MolFromSmiles(smiles)
-        smiles=Chem.CanonSmiles(smiles)
-        return smiles
-    except:
+    except Exception as e:
+        # Other exceptions can be handled here if needed
         return None
 
 
@@ -81,22 +87,24 @@ def compute_validity(data_ls):
                     valid_ls.append(smiles)
             except:
                 pass
-    return valid_ls,len(valid_ls)/(length+1e-15)
+    return valid_ls,len(valid_ls)/(length)
 
 def compute_uniqueness(smiles_ls):
+    if len(smiles_ls)==0:
+        return [],0.
     ls=set(smiles_ls)
     ls=list(ls)
     
-    return ls,len(ls)/(len(smiles_ls)+1e-15)
+    return ls,len(ls)/(len(smiles_ls))
 
 def compute_novelty(smiles_ls,dataset_smiles_set):
     sample_set=set(smiles_ls)
     inter_sec=sample_set.intersection(dataset_smiles_set)
     if len(sample_set)==0:
-        return None,0.
+        return [],0.
     else:
-        
-        return sample_set.difference(inter_sec),1-(len(inter_sec)/(len(sample_set)+1e-15))
+        frac=1-(len(inter_sec)/(len(sample_set)))
+        return sample_set.difference(inter_sec),frac
 
 def compute_metrics(data_ls,dataset_smiles):
 
@@ -105,6 +113,13 @@ def compute_metrics(data_ls,dataset_smiles):
     novel_smiles,novelty_frac=compute_novelty(unique_smiles,dataset_smiles)
 
     return validity_frac,unique_frac,novelty_frac,novel_smiles
+
+def smiles_to_txt(path,smiles,i):
+    with open(path+f"smiles_epoch{i}.txt", "w") as file:
+    # Write each string on a new line
+        if len(smiles)!=0:
+            for item in smiles:
+                file.write(item + "\n")
 
 def evaluate_reconstruction(data,data_rec):
     data_ls=data.to_data_list()

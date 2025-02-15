@@ -729,3 +729,88 @@ def oh_encode_reconstructed_data(data):
     
     return Data(F.one_hot(torch.argmax(x,dim=1),num_classes=4).to(torch.float),edge_index,
                         edge_attr=F.one_hot(torch.argmax(attr,dim=1),num_classes=4),batch=data.batch)
+
+
+def create_dataset(dataset_smiles):
+    data_ls=[]
+    for smiles in dataset_smiles:
+        mol = Chem.MolFromSmiles(smiles)
+        atom_dict={1:[1,1,0,0,0,0],6:[1,0,1,0,0,0],7:[1,0,0,1,0,0],8:[1,0,0,0,1,0],9:[1,0,0,0,0,1]}
+        node_features = []
+        for atom in mol.GetAtoms():
+            atomic_num=atom.GetAtomicNum()
+            atom_features = atom_dict[atomic_num]
+            node_features.append(atom_features)
+        bond_dict={Chem.BondType.SINGLE:[-1,0,1,0,0,0],Chem.BondType.AROMATIC:[-1,0,0,1,0,0],
+            Chem.BondType.DOUBLE:[-1,0,0,0,1,0],Chem.BondType.TRIPLE:[-1,0,0,0,0,1]}
+        edges = []
+
+        dic={}
+        for bond in mol.GetBonds():
+            start, end = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
+            bond_type=bond.GetBondType()
+            dic[(start,end)]=bond_dict[bond_type]
+            dic[(end,start)]=bond_dict[bond_type]
+
+        k=len(node_features)
+        num_atoms=len(node_features)
+        for i in range(num_atoms):
+            for j in range(i,num_atoms):
+                if i!=j:
+                    edges.append([i, k])
+                    edges.append([k, i])
+                    edges.append([k, j])
+                    edges.append([j, k])
+                    k+=1
+                else:
+                    edges.append([i,j])
+        for i in range(num_atoms):
+            for j in range(i+1,num_atoms):
+                    x=dic.get((i,j),[-1,1,0,0,0,0])
+                    node_features.append(x)
+
+        edge_index=torch.tensor(edges, dtype=torch.long).t().contiguous() if len (edges)>1 else torch.empty((2,0),dtype=torch.long)
+
+        node_features=torch.tensor(node_features)
+        data=Data(x=node_features,edge_index=edge_index)
+        data_ls.append(data)
+    return data_ls
+def compute_gradients(model):
+    """
+    Computes the gradients for the encoder and decoder separately and calculates their norms.
+
+    Args:
+        model: The VAE model containing encoder and decoder.
+
+    Returns:
+        encoder_norm: Norm of the encoder gradients.
+        decoder_norm: Norm of the decoder gradients.
+    """
+
+    
+    encoder_norm = 0.0
+    decoder_norm = 0.0
+
+    aggregation_norm=0.0
+    latent_norm=0.0
+
+    # Loop through model parameters
+    for name, param in model.named_parameters():
+        if param.grad is not None:  # Ensure the gradients exist
+            if 'encoder' in name:
+
+                encoder_norm += param.grad.data.norm(2).item() ** 2  # L2 norm
+            elif 'decoder' in name:
+                decoder_norm += param.grad.data.norm(2).item() ** 2  # L2 norm
+            elif 'aggregation' in name:
+                aggregation_norm+=param.grad.data.norm(2).item() ** 2  # L2 norm
+            elif 'linear_mu' in name or 'linear_sigma':
+                latent_norm+=param.grad.data.norm(2).item() ** 2  # L2 norm
+
+
+
+    # Take the square root of the sums to get the final norms
+    encoder_norm = encoder_norm ** 0.5
+    decoder_norm = decoder_norm ** 0.5
+
+    return encoder_norm, decoder_norm,aggregation_norm,latent_norm
