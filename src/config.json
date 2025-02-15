@@ -1,12 +1,20 @@
 {
     "epochs": 1000,
-    "batch_size": 1,
+    "batch_size": 64,
     "encoder_norm": "layer",
-    "decoder_norm": "layer",
+    "encoder_layers":5,
+    
+    "encoder_hidden_dims":[16, 32, 64, 128],
+    "encoder_output_dim":256,
+
     "lr": 1e-5,
     "dropout": 0.01,
     "sample_size": 10000,
     "latent_dim": 50,
     "alpha": 0.1,
-    "beta": 0.001
+    "beta": 0.001,
+    "decoder_norm": "layer",
+    "attention_heads":8,
+    "decoder_hidden_dim":128,
+    "decoder_layers":5
 }
