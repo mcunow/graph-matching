@@ -9,11 +9,11 @@ import argparse
 import json
 
 
-#TODO Delete this in the end
+
 use_wandb = os.getenv("USE_WANDB", False)=="True"
 wandb_key=os.getenv("WANDB_MODE","online")
 
-#TODO Edit this
+
 with open('../src/wandb_key.txt', 'r') as file:
     key = file.read()
 
@@ -37,10 +37,10 @@ def load_datasets():
     with open('../data/smiles_canonical_train.pkl', 'rb') as file:
         dataset_smiles = pickle.load(file)
     
-    with gzip.open('../data/dataset_fc_small.pkl.gz', 'rb') as f:
+    with gzip.open('../data/dataset_train_fc.pkl.gz', 'rb') as f:
         dataset = pickle.load(f)
     
-    with gzip.open('../data/dataset_fc_small.pkl.gz', 'rb') as f:
+    with gzip.open('../data/dataset_validation_fc.pkl.gz', 'rb') as f:
         dataset_val = pickle.load(f)
     
     return dataset_smiles, dataset, dataset_val
@@ -195,10 +195,11 @@ def main(args):
     # Set device and initialize models
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     encoder = gnn.GIN(
-        in_channels=6, hidden_channels=[16, 32, 64, 128], out_channels=256, 
-        norm=config["encoder_norm"], num_layers=5, act="leakyrelu", dropout=config["dropout"]
+        in_channels=6, hidden_channels=config["encoder_hidden_dims"], out_channels=config["encoder_output_dim"], 
+        norm=config["encoder_norm"], num_layers=config["encoder_layers"], act="leakyrelu", dropout=config["dropout"]
     ).to(device)
-    decoder = TransformerDecoder(config["latent_dim"], 128,config["decoder_norm"]).to(device)
+    decoder = TransformerDecoder(config["latent_dim"], config["decoder_hidden_dim"],config["attention_heads"],config["decoder_layers"],
+                                 config["decoder_norm"]).to(device)
     matcher = generate_perm_inv_loss(args.perm_inv_loss)
     vgae_model = vgae.VGAE(encoder=encoder, decoder=decoder, latent_dims=config["latent_dim"], 
                            embedding="graph", eval=False).to(device)

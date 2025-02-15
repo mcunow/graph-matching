@@ -33,7 +33,7 @@ class TransformerGraphInit(nn.Module):
         # Transformer Encoder
         encoder_layer = nn.TransformerEncoderLayer(d_model=embed_dim, nhead=n_heads,batch_first=True,dropout=0.01)
 
-        #TODO Add a normalization layer
+    
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=n_layers,norm=norm)
         
         # Output MLP (optional)
@@ -67,7 +67,7 @@ class TransformerGraphInit(nn.Module):
         return graph_init,transformer_out
     
 class TransformerDecoder(nn.Module):
-    def __init__(self,latent_dim,embed_dim,norm=None):
+    def __init__(self,latent_dim,embed_dim,attention_heads,layers,norm=None):
         super(TransformerDecoder,self).__init__()
         self.device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
@@ -78,7 +78,7 @@ class TransformerDecoder(nn.Module):
         self.embed_dim=embed_dim
         if norm=="layer":
             norm=nn.LayerNorm(self.embed_dim)
-        self.transformer=TransformerGraphInit(latent_dim=latent_dim,embed_dim=self.embed_dim,n_heads=8,n_layers=4,norm=norm)
+        self.transformer=TransformerGraphInit(latent_dim=latent_dim,embed_dim=self.embed_dim,n_heads=attention_heads,n_layers=layers,norm=norm)
 
 
     def forward(self,global_vec,data=None):

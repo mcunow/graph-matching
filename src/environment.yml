@@ -1,0 +1,18 @@
+channels:
+  - conda-forge
+  - defaults
+  - pytorch
+dependencies:
+  #- python=3.8  # Specify the desired Python version
+  - pip
+  - pytorch=2.1.2  # Specify the desired PyTorch version
+  # Replace with your CUDA version or use cpuonly if not using CUDA
+  - pip:
+      - pyg-lib
+      - torch-scatter
+      - torch-sparse
+      - torch-geometric
+      - rdkit
+      - pot
+      - seaborn
+      - wandb
