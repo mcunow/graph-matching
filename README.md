@@ -30,4 +30,4 @@ Hyperparameters can be observed and adapted in src/config.json
 
 ## Results
 
-<img src="graph_matching.png" width="500"/>
+<img src="Results.png" width="500"/>
