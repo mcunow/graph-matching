@@ -24,7 +24,7 @@ Available loss_type options:
 - Statistics
 - GNN
 
-You can track your results via wandb. You need to provide your wandb key in /src/wandb_key.txt. If you dont want to use wandb, than you need to set the USE_WANDB flag to "False" in scripts/run.sh.  
+If you want to run the experiments locally, then you need to reduce the batch_size. You can track your results via wandb. You need to provide your wandb key in /src/wandb_key.txt. If you dont want to use wandb, than you need to set the USE_WANDB flag to "False" in scripts/run.sh.  
 
 Hyperparameters can be observed and adapted in src/config.json
 
