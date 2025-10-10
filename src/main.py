@@ -65,7 +65,7 @@ def matching_loss(matching_type,matched_loss,unmatched_loss):
     
 
 def generate_perm_inv_loss(loss_type):
-    if loss_type=="Optimal":
+    if loss_type=="Top1":
         return matching.BruteForceMatcher()
     elif loss_type=="Top10":
         return matching.BruteForceSampleMatcher(10)
@@ -81,7 +81,7 @@ def generate_perm_inv_loss(loss_type):
         raise Exception("Permutation-invariant loss is not correct specified.")
 
 def perm_inv_loss(matcher,data,data_rec,loss_type):
-    if loss_type=="Optimal" or loss_type=="Top10" or loss_type=="Top50" or loss_type=="Top100":
+    if loss_type=="Top1" or loss_type=="Top10" or loss_type=="Top50" or loss_type=="Top100":
         return matcher.match(data,data_rec)
     elif loss_type=="Statistics":
         return matcher.statistics_loss(data,data_rec)
@@ -171,15 +171,13 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Main script for graph matching project")
 
     # General settings
-    parser.add_argument('--perm_inv_loss', type=str, default="Optimal", help="Optimal, Top10, Top50, Top100, Statistics, GNN")
+    parser.add_argument('--perm_inv_loss', type=str, default="Top1", help="Top1, Top10, Top50, Top100, Statistics, GNN")
     return parser.parse_args()
 
 # Main function
 def main(args):
     # Load datasets
     dataset_smiles, dataset, dataset_val = load_datasets()
-    dataset=dataset[:10]
-    dataset_val=dataset_val[:10]
 
     #Read hyperparameters
     with open("../src/config.json", "r") as f:

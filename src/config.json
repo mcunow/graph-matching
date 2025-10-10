@@ -1,6 +1,6 @@
 {
     "epochs": 1000,
-    "batch_size": 64,
+    "batch_size": 1,
     "encoder_norm": "layer",
     "encoder_layers":5,
     

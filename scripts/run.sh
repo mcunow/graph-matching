@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ -z "$1" ]; then
-    echo "Error: Missing argument. You must specify the permutation-invariant loss. The options are: "Optimal", "Top10", "Top50", "Top100", "GNN", "Statistics""
+    echo "Error: Missing argument. You must specify the permutation-invariant loss. The options are: "Top1", "Top10", "Top50", "Top100", "GNN", "Statistics""
     exit 1  # Exit with a non-zero status to indicate an error
 fi
 
